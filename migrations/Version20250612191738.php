@@ -19,7 +19,7 @@ final class Version20250612191738 extends AbstractMigration
     public function up(Schema $schema): void
     {
         $this->addSql(<<<'SQL'
-                CREATE TABLE "event" (id UUID NOT NULL, label VARCHAR(64) NOT NULL, description TEXT DEFAULT NULL, start_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, status VARCHAR(9) NOT NULL, duration INT NOT NULL, PRIMARY KEY(id))
+                CREATE TABLE "event" (id UUID NOT NULL, label VARCHAR(64) NOT NULL, description TEXT DEFAULT NULL, start_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, status VARCHAR(9) NOT NULL, duration INT NOT NULL, deleted_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL, PRIMARY KEY(id))
             SQL);
     }
 

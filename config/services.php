@@ -10,6 +10,7 @@ declare(strict_types=1);
  */
 
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
+use Symfony\Component\DependencyInjection\Reference;
 
 return static function (ContainerConfigurator $containerConfigurator): void {
     $containerConfigurator->import(__DIR__ . '/parameters.php');
@@ -29,6 +30,19 @@ return static function (ContainerConfigurator $containerConfigurator): void {
             __DIR__ . '/../src/Security/DependencyInjection',
             __DIR__ . '/../src/Security/Model',
         ])
+    ;
+
+    $services->set(Dogstronauts\AstroBook\ApiPlatform\State\SoftDeleteProcessor::class)
+        ->decorate('api_platform.doctrine.orm.state.remove_processor')
+        ->args([
+            new Reference(Dogstronauts\AstroBook\ApiPlatform\State\SoftDeleteProcessor::class . '.inner'),
+            new Reference('doctrine.orm.entity_manager'),
+        ])
+    ;
+
+    $services->set(Dogstronauts\AstroBook\ApiPlatform\Doctrine\Orm\Filter\SoftDeleteFilter::class)
+        ->tag('api_platform.doctrine.orm.query_extension.collection')
+        ->tag('api_platform.doctrine.orm.query_extension.item')
     ;
 
     if (in_array($containerConfigurator->env(), ['dev', 'test'], true)) {

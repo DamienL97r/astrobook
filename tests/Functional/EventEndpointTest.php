@@ -66,6 +66,20 @@ final class EventEndpointTest extends KernelTestCase
         ;
     }
 
+    #[Group('get-endpoints-error')]
+    #[Group('get-events-endpoints-error')]
+    public function testGetEventNotFound(): void
+    {
+        $fakeId = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
+        $iri = 'events/' . $fakeId;
+
+        $this->browser()
+            ->get($iri)
+            ->assertStatus(Response::HTTP_NOT_FOUND)
+            ->assertJson()
+        ;
+    }
+
     #[Group('post-endpoints-success')]
     #[Group('post-events-endpoints-success')]
     public function testPostSuccess(): void
@@ -173,6 +187,121 @@ final class EventEndpointTest extends KernelTestCase
             ->actingAs($this->createUser())
             ->delete($eventIri)
             ->assertStatus(Response::HTTP_FORBIDDEN)
+        ;
+    }
+
+    // === SOFT DELETE TESTS ===
+    #[Group('soft-delete-endpoints')]
+    #[Group('soft-delete-events-endpoints')]
+    public function testSoftDeleteOnDelete(): void
+    {
+        $event = EventFactory::createOne();
+        $eventIri = $this->getIriFromResource($event);
+
+        $this->browser()
+            ->actingAs($this->createUser(roles: ['ROLE_PLATFORM']))
+            ->delete($eventIri)
+            ->assertStatus(Response::HTTP_NO_CONTENT)
+        ;
+
+        $ulid = $event->id;
+
+        $softDeleted = self::getContainer()
+            ->get('doctrine')
+            ->getRepository(\Dogstronauts\AstroBook\Events\Model\Event::class)
+            ->find($ulid)
+        ;
+        $this->assertNotNull($softDeleted->getDeletedAt());
+    }
+
+    #[Group('soft-delete-events-endpoints')]
+    public function testHiddenFromCollection(): void
+    {
+        EventFactory::createOne(['label' => 'Visible Event']);
+        $event = EventFactory::createOne(['label' => 'Deleted Event']);
+        $event->setDeletedAt(new \DateTimeImmutable());
+        $event->_save();
+
+        $this->browser()
+            ->get('/events')
+            ->assertJson()
+            ->use(function (Json $json) use ($event): void {
+                $members = $json->decoded()['member'];
+                $ids = array_column($members, 'id');
+                $this->assertNotContains($event->id->__toString(), $ids);
+            })
+        ;
+    }
+
+    #[Group('soft-delete-events-endpoints')]
+    public function testAdminSeesWithFlag(): void
+    {
+        EventFactory::createOne(['label' => 'Visible Event']);
+        $event = EventFactory::createOne(['label' => 'Deleted Event']);
+        $event->setDeletedAt(new \DateTimeImmutable());
+        $event->_save();
+
+        $this->browser()
+            ->actingAs($this->createUser(roles: ['ROLE_PLATFORM']))
+            ->get('/events?deleted=true')
+            ->assertJson()
+            ->use(function (Json $json) use ($event): void {
+                $members = $json->decoded()['member'];
+                $ids = array_column($members, 'id');
+                $this->assertContains($event->id->__toString(), $ids);
+            })
+        ;
+    }
+
+    #[Group('soft-delete-events-endpoints')]
+    public function testUserCannotSeeWithFlag(): void
+    {
+        EventFactory::createOne(['label' => 'Visible Event']);
+        $event = EventFactory::createOne(['label' => 'Deleted Event']);
+        $event->setDeletedAt(new \DateTimeImmutable());
+        $event->_save();
+
+        $this->browser()
+            ->actingAs($this->createUser())
+            ->get('/events?deleted=true')
+            ->assertJson()
+            ->use(function (Json $json) use ($event): void {
+                $members = $json->decoded()['member'];
+                $ids = array_column($members, 'id');
+                $this->assertNotContains($event->id->__toString(), $ids);
+            })
+        ;
+    }
+
+    #[Group('soft-delete-events-endpoints')]
+    public function testAdminCanGetWithFlag(): void
+    {
+        $event = EventFactory::createOne(['label' => 'Deleted Item']);
+        $event->setDeletedAt(new \DateTimeImmutable());
+        $event->_save();
+        $iri = $this->getIriFromResource($event);
+
+        $this->browser()
+            ->actingAs($this->createUser(roles: ['ROLE_PLATFORM']))
+            ->get($iri . '?deleted=true')
+            ->assertJson()
+            ->assertJsonMatches('id', $event->id->__toString())
+            ->assertJsonMatches('label', 'Deleted Item')
+        ;
+    }
+
+    #[Group('soft-delete-events-endpoints')]
+    public function testUserCannotGetWithFlag(): void
+    {
+        $event = EventFactory::createOne(['label' => 'Deleted Item']);
+        $event->setDeletedAt(new \DateTimeImmutable());
+        $event->_save();
+        $iri = $this->getIriFromResource($event);
+
+        $this->browser()
+            ->actingAs($this->createUser())
+            ->get($iri . '?deleted=true')
+            ->assertStatus(Response::HTTP_NOT_FOUND)
         ;
     }
 }
