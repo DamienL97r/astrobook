@@ -13,8 +13,11 @@ namespace Dogstronauts\AstroBook\Security\Model;
 
 use ApiPlatform\Metadata as ApiMetadata;
 use ApiPlatform\OpenApi\Model\Operation;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Dogstronauts\AstroBook\Bookings\Model\Booking;
 use Dogstronauts\AstroBook\Security\ApiPlatform\State\UserProcessor;
 use Symfony\Bridge\Doctrine\IdGenerator\UlidGenerator;
 use Symfony\Bridge\Doctrine\Types\UlidType;
@@ -43,6 +46,11 @@ use Symfony\Component\Validator\Constraints\PasswordStrength;
 )]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
+    public function __construct()
+    {
+        $this->bookings = new ArrayCollection();
+    }
+
     #[ORM\Id]
     #[ORM\Column(type: UlidType::NAME)]
     #[ORM\CustomIdGenerator(class: UlidGenerator::class)]
@@ -76,6 +84,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[Serializer\Groups(['user:read', 'user:write'])]
     public array $roles = [];
 
+    /**
+     * @var Collection<int, Booking>
+     */
+    #[ORM\OneToMany(targetEntity: Booking::class, mappedBy: 'bookedBy')]
+    private Collection $bookings;
+
+
     public function getPassword(): string
     {
         return $this->password;
@@ -96,7 +111,35 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         message: 'The "eraseCredentials()" method is deprecated since Symfony 7.3. It will be removed in Symfony 8.0.',
         since: '7.3'
     )]
-    public function eraseCredentials(): void
+    public function eraseCredentials(): void {}
+
+    /**
+     * @return Collection<int, Booking>
+     */
+    public function getBookings(): Collection
     {
+        return $this->bookings;
+    }
+
+    public function addBooking(Booking $booking): static
+    {
+        if (!$this->bookings->contains($booking)) {
+            $this->bookings->add($booking);
+            $booking->setBookedBy($this);
+        }
+
+        return $this;
+    }
+
+    public function removeBooking(Booking $booking): static
+    {
+        if ($this->bookings->removeElement($booking)) {
+            // set the owning side to null (unless already changed)
+            if ($booking->getBookedBy() === $this) {
+                $booking->setBookedBy(null);
+            }
+        }
+
+        return $this;
     }
 }

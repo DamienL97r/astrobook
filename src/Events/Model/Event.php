@@ -17,8 +17,11 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Dogstronauts\AstroBook\Bookings\Model\Booking;
 use Dogstronauts\AstroBook\Contracts\SoftDeleteInterface;
 use Dogstronauts\AstroBook\Utils\SoftDeleteTrait;
 use Symfony\Bridge\Doctrine\IdGenerator\UlidGenerator;
@@ -46,6 +49,11 @@ use Symfony\Component\Validator\Constraints as Assert;
 class Event implements SoftDeleteInterface
 {
     use SoftDeleteTrait;
+
+    public function __construct()
+    {
+        $this->bookings = new ArrayCollection();
+    }
 
     #[ORM\Id]
     #[ORM\Column(type: UlidType::NAME)]
@@ -85,11 +93,47 @@ class Event implements SoftDeleteInterface
     public int $duration;
 
     /**
+     * @var Collection<int, Booking>
+     */
+    #[ORM\OneToMany(targetEntity: Booking::class, mappedBy: 'event')]
+    private Collection $bookings;
+
+    /**
      * @var \DateTimeImmutable $endAt is dynamically computed by adding
      *                         the duration (in minutes) to the start date
      */
     #[Serializer\Groups(['event:read'])]
     public \DateTimeImmutable $endAt {
         get => $this->startAt->modify(sprintf('+%d minutes', $this->duration));
+    }
+
+    /**
+     * @return Collection<int, Booking>
+     */
+    public function getBookings(): Collection
+    {
+        return $this->bookings;
+    }
+
+    public function addBooking(Booking $booking): static
+    {
+        if (!$this->bookings->contains($booking)) {
+            $this->bookings->add($booking);
+            $booking->setEvent($this);
+        }
+
+        return $this;
+    }
+
+    public function removeBooking(Booking $booking): static
+    {
+        if ($this->bookings->removeElement($booking)) {
+            // set the owning side to null (unless already changed)
+            if ($booking->getEvent() === $this) {
+                $booking->setEvent(null);
+            }
+        }
+
+        return $this;
     }
 }

@@ -58,6 +58,13 @@ return static function (ContainerConfigurator $containerConfigurator): void {
                     'prefix' => 'Dogstronauts\AstroBook\Events\Model',
                     'alias' => 'Events',
                 ],
+                'Bookings' => [
+                    'type' => 'attribute',
+                    'is_bundle' => false,
+                    'dir' => '%kernel.project_dir%/src/Bookings/Model',
+                    'prefix' => 'Dogstronauts\AstroBook\Bookings\Model',
+                    'alias' => 'Bookings',
+                ],
             ],
             'controller_resolver' => [
                 'auto_mapping' => false,
