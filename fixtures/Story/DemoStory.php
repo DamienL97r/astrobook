@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace Dogstronauts\AstroBook\Fixtures\Story;
 
 use Dogstronauts\AstroBook\Events\Model\EventStatus;
+use Dogstronauts\AstroBook\Fixtures\Factory\BookingFactory;
 use Dogstronauts\AstroBook\Fixtures\Factory\EventFactory;
 use Dogstronauts\AstroBook\Fixtures\Factory\TaxonomyFactory;
 use Dogstronauts\AstroBook\Fixtures\Factory\UserFactory;
@@ -65,6 +66,25 @@ final class DemoStory extends Story
                 'startAt' => new \DateTimeImmutable('+22 days'),
                 'duration' => 420, // 7 hours
                 'status' => EventStatus::DRAFT,
+            ],
+        ])->create();
+
+        // Créons quelques bookings de démo !
+        BookingFactory::new()->sequence([
+            [
+                'event' => EventFactory::random(),
+                'bookedBy' => UserFactory::random(),
+                'status' => \Dogstronauts\AstroBook\Bookings\Model\BookingStatus::PENDING,
+            ],
+            [
+                'event' => EventFactory::random(),
+                'bookedBy' => UserFactory::random(),
+                'status' => \Dogstronauts\AstroBook\Bookings\Model\BookingStatus::CONFIRMED,
+            ],
+            [
+                'event' => EventFactory::random(),
+                'bookedBy' => UserFactory::random(),
+                'status' => \Dogstronauts\AstroBook\Bookings\Model\BookingStatus::CANCELED,
             ],
         ])->create();
 
